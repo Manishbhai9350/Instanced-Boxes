@@ -27,6 +27,10 @@ camera.zoom = 7;
 camera.position.set(-80, 40, 80);
 camera.lookAt(new THREE.Vector3(0, 0, 0));
 
+const controls = new OrbitControls(camera,canvas)
+
+
+
 let Bar = null;
 
 const manager = new THREE.LoadingManager();
@@ -111,7 +115,6 @@ function InitializeBars(bar) {
   );
 
 
-    console.log(shader.fragmentShader);
   };
 
   const InstancedMesh = new THREE.InstancedMesh(
@@ -133,8 +136,8 @@ function InitializeBars(bar) {
         0,
         (j - InstancedCount / 2) * 1.5
       );
-      PositionUV[currentElement * 2 + 0] = i / InstancedCount;
-      PositionUV[currentElement * 2 + 1] = j / InstancedCount;
+      PositionUV[currentElement * 2 + 0] =  (i / InstancedCount);
+      PositionUV[currentElement * 2 + 1] = 1 - (j / InstancedCount);
       dummy.updateMatrix();
       InstancedMesh.setMatrixAt(currentElement, dummy.matrix);
     }
@@ -142,9 +145,8 @@ function InitializeBars(bar) {
 
   InstancedMesh.geometry.setAttribute(
     "puv",
-    new THREE.BufferAttribute(PositionUV, 2)
+    new THREE.InstancedBufferAttribute(PositionUV, 2)
   );
-  console.log(InstancedMesh.geometry.setAttribute);
 
   scene.add(InstancedMesh);
 }
