@@ -292,7 +292,7 @@ function InitializeBars() {
           ring = ring - progress; 
           vRing = ring + progress;
           vec4 mask = mix(cube,india,(ring + progress));
-          transformed *= ((mask.r));
+          transformed *= ((mask.r)) * uStartProg ;
 
           float deltaY = 0.0;
           deltaY = uOffsetY + cnoise(vec4(puv.xy * uPosMul,.0,uTime * uSpeed));
