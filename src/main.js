@@ -43,6 +43,7 @@ camera.zoom = 0.006;
 
 const gui = new GUI();
 gui.close();
+gui.destroy();
 const amb = new THREE.AmbientLight(0xffe9e9, 0.5);
 const spotLight = new THREE.SpotLight("white");
 spotLight.intensity = 7000;
