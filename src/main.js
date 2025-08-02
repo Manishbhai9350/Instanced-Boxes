@@ -387,21 +387,24 @@ const Raycaster = new THREE.Raycaster()
 
 function onMouse(e){
 
-  return;
-
+  
   const nx = (e.clientX / innerWidth) * 2 - 1;
   const ny = -(e.clientY / innerHeight) * 2 + 1;
 
-  rMouse.set(nx,ny)
+  gsap.to(camera.rotation,{
+    x:-.8 + e.clientY / innerHeight * .05,
+  })
 
-  Raycaster.setFromCamera(rMouse,camera)
+  // rMouse.set(nx,ny)
 
-  const Intersects = Raycaster.intersectObjects([RaycastPlane],true)
+  // Raycaster.setFromCamera(rMouse,camera)
 
-  console.log(Intersects.length)
-  if(Intersects.length > 0){
-    MouseDebugMesh.position.copy(Intersects[0].point)
-  }
+  // const Intersects = Raycaster.intersectObjects([RaycastPlane],true)
+
+  // console.log(Intersects.length)
+  // if(Intersects.length > 0){
+  //   MouseDebugMesh.position.copy(Intersects[0].point)
+  // }
 
 }
 
@@ -411,6 +414,7 @@ let PrevTime = clock.getElapsedTime();
 
 
 function Animate() {
+  // camera.rotation.z += .01
   const Time = clock.getElapsedTime();
   const DT = Time - PrevTime;
   if (InstancedMesh && InstancedUniforms) {
