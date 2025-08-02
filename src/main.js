@@ -37,7 +37,7 @@ const camera = new THREE.OrthographicCamera(
 let cameraLookAt = new THREE.Vector3(0, 0, 0);
 camera.position.set(-1,1,1);
 camera.lookAt(cameraLookAt);
-camera.zoom = 0.006;
+camera.zoom = 0.007;
 
 // const controls = new OrbitControls(camera, canvas);
 
@@ -148,6 +148,7 @@ const uniforms = {
   uMask: { value: maskMap }, // Animator Texture
   uIndia:{ value: indiaMap },
   aoMap: { value: null }, // Ambient Occlusion Map Texture
+  uMouse:{ value: new THREE.Vector2() },
   light_color: { value: new THREE.Color("#ffe9e9") },
   ramp_color_one: { value: new THREE.Color("#06083D") },
   ramp_color_two: { value: new THREE.Color("#020284") },
@@ -203,7 +204,8 @@ function InitializeBars() {
 
     gui.add(uniforms.uProgress,'value').min(0).max(1)
 
-    
+    shader.uniforms.uStartProg.value = 0
+    shader.uniforms.uProgress.value = 0
     gsap.to(shader.uniforms.uStartProg,{
       delay:2,
       duration:1.5,
@@ -219,7 +221,7 @@ function InitializeBars() {
         gsap.to(shader.uniforms.uProgress,{
           value:1,
           ease:'power3.inOut',
-          duration:2.5
+          duration:4
         })
       }
     })
@@ -246,7 +248,6 @@ function InitializeBars() {
       uniform vec3 ramp_color_four;
       varying vec2 vPuv;
       varying float vY;
-      varying float vRing;
       #include <common>
       `
     );
@@ -263,10 +264,10 @@ function InitializeBars() {
           uniform float uTime;
           uniform sampler2D uMask;
           uniform sampler2D uIndia;
+          uniform vec2 uMouse;
           attribute vec2 puv;
           varying vec2 vPuv;
           varying float vY;
-          varying float vRing;
           #include <common>
           `
     );
@@ -276,28 +277,35 @@ function InitializeBars() {
       /*glsl*/`
           vPuv = puv;
           #include <begin_vertex>
-          vec4 cube = mix(vec4(0.0),texture2D(uMask,puv),uStartProg);
-          vec4 india = vec4(1.0) - texture2D(uIndia,puv);
+          vec4 cube = mix(vec4(0.0),texture2D(uMask,puv),1.0);
+          vec2 inUv = vec2(puv.x,puv.y);
+          vec4 india = vec4(1.0) - texture2D(uIndia,inUv);
 
           float len = length(puv - vec2(.5,.5));
 
           float totalProg = pow(2.0,.5) * len;
-          float currentProg = totalProg * uProgress;
+          float currentProg = totalProg * (uProgress);
           
-          float ringThickness = .08 * uStartProg;
+          float ringThickness = .08;
 
 
           
           float progress = smoothstep(totalProg,totalProg + ringThickness,uProgress + cube.r);
           float ring = smoothstep(totalProg - ringThickness,totalProg,uProgress + cube.r);
           ring = ring - progress; 
-          vRing = ring + progress;
           vec4 mask = mix(cube,india,(ring + progress));
-          transformed *= ((mask.r)) * uStartProg ;
+          transformed *= ((mask.r)) ;
 
           float deltaY = 0.0;
           deltaY = uOffsetY + cnoise(vec4(puv.xy * uPosMul,.0,uTime * uSpeed));
           deltaY *= (1.0-ring);
+
+          float maxMouseDisplace = 50.0;
+
+          float radius = .1;
+          float MTCL = length(puv - uMouse);
+
+          transformed.y -= smoothstep(radius,0.0,MTCL) * maxMouseDisplace;
 
           transformed.y += deltaY * uNoiseMul + ring * 50.0;
 
@@ -367,23 +375,26 @@ function InitializeBars() {
 
 const RaycastPlane = new THREE.Mesh(
   new THREE.PlaneGeometry(60 * 49.68,60 * 49.68),
-  new THREE.MeshBasicMaterial({color:0xff0000,wireframe:true})
+  new THREE.MeshBasicMaterial({color:0xff0000,transparent:true,opacity:0})
 )
 
 RaycastPlane.position.set(-1/2 * 60,0,-1/2 * 60)
 
 const MouseDebugMesh = new THREE.Mesh(
   new THREE.SphereGeometry(100),
-  new THREE.MeshBasicMaterial({color:'yellow'})
+  new THREE.MeshBasicMaterial({color:'yellow',transparent:true,opacity:0})
 )
-// scene.add(MouseDebugMesh,RaycastPlane)
-
 RaycastPlane.rotation.x = -Math.PI/2
+scene.add(MouseDebugMesh,RaycastPlane)
+
 
 const rMouse = new THREE.Vector2(0,0)
 
 const Raycaster = new THREE.Raycaster()
-
+const TargetMousePos = new THREE.Vector3(0,0,0)
+const LerpedMousePos = new THREE.Vector3(0,0,0)
+const TargetUV = new THREE.Vector2(0,0)
+const LerpedUv = new THREE.Vector2(0,0);
 
 function onMouse(e){
 
@@ -391,20 +402,20 @@ function onMouse(e){
   const nx = (e.clientX / innerWidth) * 2 - 1;
   const ny = -(e.clientY / innerHeight) * 2 + 1;
 
-  gsap.to(camera.rotation,{
-    x:-.8 + e.clientY / innerHeight * .05,
-  })
+  // gsap.to(camera.rotation,{
+  //   x:-.8 + e.clientY / innerHeight * .05,
+  // })
 
-  // rMouse.set(nx,ny)
+  rMouse.set(nx,ny)
 
-  // Raycaster.setFromCamera(rMouse,camera)
+  Raycaster.setFromCamera(rMouse,camera)
 
-  // const Intersects = Raycaster.intersectObjects([RaycastPlane],true)
+  const Intersects = Raycaster.intersectObjects([RaycastPlane],true)
 
-  // console.log(Intersects.length)
-  // if(Intersects.length > 0){
-  //   MouseDebugMesh.position.copy(Intersects[0].point)
-  // }
+  if(Intersects.length > 0){
+    TargetUV.copy(Intersects[0].uv)
+    TargetMousePos.copy(Intersects[0].point)
+  }
 
 }
 
@@ -417,8 +428,19 @@ function Animate() {
   // camera.rotation.z += .01
   const Time = clock.getElapsedTime();
   const DT = Time - PrevTime;
+
+  LerpedMousePos.x += (TargetMousePos.x - LerpedMousePos.x) * .1
+  LerpedMousePos.y += (TargetMousePos.y - LerpedMousePos.y) * .1
+  LerpedMousePos.z += (TargetMousePos.z - LerpedMousePos.z) * .1
+
+  LerpedUv.x += (TargetUV.x - LerpedUv.x) * 1
+  LerpedUv.y += (TargetUV.y - LerpedUv.y) * 1
+
+  MouseDebugMesh.position.copy(LerpedMousePos)
+
   if (InstancedMesh && InstancedUniforms) {
     InstancedUniforms.uTime.value = Time;
+    InstancedUniforms.uMouse.value.copy(LerpedUv)
   }
   renderer.render(scene, camera);
   requestAnimationFrame(Animate);

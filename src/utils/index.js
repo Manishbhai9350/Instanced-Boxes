@@ -12,3 +12,13 @@ export function GetSceneBounds(renderer = new WebGLRenderer(),camera = new Persp
     const width =  height * aspect;
     return {width,height}
 }
+
+
+
+export function GetRotatedTexture(src,angle){
+    const image = new Image()
+    image.src = src;
+    image.onload = () => {
+        console.log(image)
+    }
+}
